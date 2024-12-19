@@ -1,0 +1,176 @@
+apply plugin: 'java-library'
+apply plugin: 'groovy'
+apply plugin: 'java'
+apply plugin: 'idea'
+
+
+repositories {
+    mavenCentral()
+}
+
+
+dependencies {
+
+    implementation group: 'io.github.bonigarcia', name: 'webdrivermanager', version: '5.8.0'
+    implementation 'org.seleniumhq.selenium:selenium-java:4.18.1'
+    testImplementation 'com.codeborne:selenide:7.2.0'
+    testImplementation 'io.github.bonigarcia:webdrivermanager:5.8.0' // Use the latest version
+    implementation group: 'com.github.javafaker', name: 'javafaker', version: '1.0.2'
+
+    implementation 'org.apache.logging.log4j:log4j-core:2.23.1'
+    implementation 'org.apache.logging.log4j:log4j-api:2.23.1'
+
+    implementation 'org.apache.poi:poi:5.2.5'
+    implementation 'org.apache.poi:poi-ooxml:5.2.5'
+
+    implementation 'org.dhatim:fastexcel-reader:0.17.0'
+
+    implementation 'net.masterthought:cucumber-reporting:3.20.0'
+
+    //compile 'com.codeborne:phantomjsdriver:1.3.0'
+    implementation 'io.rest-assured:rest-assured:3.3.0'
+
+    implementation 'io.cucumber:cucumber-junit:7.15.0'
+    implementation 'io.cucumber:cucumber-testng:7.15.0'
+    implementation 'io.cucumber:cucumber-core:7.15.0'
+    implementation 'io.cucumber:cucumber-java:7.15.0'
+    implementation 'io.cucumber:cucumber-jvm:7.15.0'
+    implementation group: 'io.cucumber', name: 'cucumber-gherkin', version: '7.15.0'
+
+    implementation group: 'commons-io', name: 'commons-io', version:'2.6'
+    implementation group: 'org.apache.commons', name: 'commons-lang3', version: '3.9'
+
+
+//PDFTextStripper
+    implementation 'org.apache.pdfbox:pdfbox:2.0.27'
+
+//Extent UI report
+    implementation group: 'com.aventstack', name: 'extentreports', version: '3.1.5'
+    implementation group: 'com.aventstack', name: 'extentreports-cucumber4-adapter', version: '1.0.4'
+    implementation group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.9.6'
+
+//Extent API report
+    implementation group: 'com.relevantcodes', name: 'extentreports', version: '2.41.0'
+    implementation group: 'org.json', name: 'json', version: '20240303'
+
+    //ashot
+    implementation group: 'ru.yandex.qatools.ashot', name: 'ashot', version: '1.5.4'
+    implementation 'org.testng:testng:7.4.0'
+    implementation 'net.masterthought:cucumber-reporting:5.3.0'
+    implementation group: 'net.masterthought', name: 'cucumber-sandwich', version: '5.3.0'
+//Rally
+    implementation 'com.rallydev.rest:rally-rest-api:2.2.1'
+    implementation 'com.google.code.gson:gson:2.9.1'
+    implementation 'com.fasterxml.jackson.core:jackson-core:2.14.2'
+// Sharepoint API
+
+//To support jfrog from nexus
+    implementation 'com.microsoft.graph:microsoft-graph:5.71.0'
+    implementation 'com.microsoft.azure:msal4j:1.13.10'
+    implementation 'org.apache.kafka:kafka-clients:3.4.0'
+    implementation 'com.jayway.jsonpath:json-path:2.8.0'
+
+
+}
+
+def envAttr = Attribute.of("org.gradle.jvm.environment", String)
+dependencies.attributesSchema {
+    // registers this attribute to the attributes schema
+    attribute(envAttr)
+}
+
+tasks.withType(Test) {
+    systemProperties = System.getProperties()
+}
+//for including in the copy task
+def dataContent = copySpec {
+    from 'src/data'
+    include '*.data'
+}
+
+task manageReport(type:JavaExec) {
+    println 'I am in Report Image Manager task'
+    main = 'auto.utilities.ReportManager'
+    classpath = sourceSets.main.runtimeClasspath
+    println   "Root project:   ${project.rootProject}";
+    println  "  rootDir:      ${project.rootDir}"
+    println  "  projectDir:   ${project.projectDir}";
+    println  "  project dir:  ${System.getProperty("user.dir")}";
+    systemProperties System.getProperties()
+
+}
+
+task TestUISeleniumTest(type: Test) {
+    try {
+        include '**/TestNGRunner.class'
+        jvmArgs("-Xmx4g")
+        useTestNG()
+        jvmArgs(["-Ddataproviderthreadcount=4"])
+        scanForTestClasses = false
+        testLogging.showStandardStreams = true
+        systemProperties System.getProperties()
+    } finally {
+        println 'I am in TestUISeleniumTest'
+    }
+}
+
+task rerunFailedTestsOne(type: Test) {
+    doFirst {
+        def retryCount = getPropertyValue('retryCount')?.toInteger() ?: 0
+        println "Retry count from properties file: $retryCount"
+        def failedTestsFileOne = new File('target/failed-scenarios-details/failed.txt')
+        if (!(retryCount >= 1 && retryCount <= 2 && failedTestsFileOne.exists() && failedTestsFileOne.text.trim() != '')) {
+            println "Retry count from properties file : $retryCount"
+            throw new StopExecutionException("No failures detected or retry count is less than 1, skipping rerunFailedTestsTwo")
+        }
+    }
+    println "Retry count from properties file"
+    include '**/RerunTestRunner.class'
+    useTestNG()
+    scanForTestClasses = false
+    testLogging.showStandardStreams = true
+    systemProperties = System.getProperties()
+}
+
+task rerunFailedTestsTwo(type: Test) {
+    doFirst {
+        def retryCount = getPropertyValue('retryCount')?.toInteger() ?: 0
+        println "Retry count from properties file: $retryCount"
+        def failedTestsFileOne = new File('target/failed-scenarios-details/failed.txt')
+        def failedTestsFileTwo = new File('target/failed-scenarios-details/failedTwo.txt')
+        if (!(retryCount == 2 && failedTestsFileTwo.exists() && failedTestsFileTwo.text.trim() != '' && failedTestsFileOne.exists() && failedTestsFileOne.text.trim() != '')) {
+            throw new StopExecutionException("No failures detected or retry count is less than 2, skipping rerunFailedTestsTwo")
+        }
+    }
+    include '**/RerunTestRunnerTwo.class'
+    useTestNG()
+    scanForTestClasses = false
+    testLogging.showStandardStreams = true
+    systemProperties = System.getProperties()
+}
+
+TestUISeleniumTest.finalizedBy(rerunFailedTestsOne)
+rerunFailedTestsOne.finalizedBy(rerunFailedTestsTwo)
+
+ext.getPropertyValue = { key ->
+    Properties props = new Properties()
+    file('src/test/resources/auto.properties/config.properties').withInputStream { stream ->
+        props.load(stream)
+    }
+    return props.getProperty(key)
+}
+
+
+tasks.withType(Test) {
+    jvmArgs '-XX:TieredStopAtLevel=1', '-XX:+UseParallelGC', '-XX:ReservedCodeCacheSize=100m', '-Xshare:auto', '-noverify'
+    maxHeapSize '4096m'
+    maxParallelForks = 4
+}
+
+task excelReadTest(type:JavaExec) {
+    println 'ExcelReader test'
+    main = 'auto.utilities.FastExcelReader'
+    classpath = sourceSets.test.runtimeClasspath
+    systemProperties System.getProperties()
+    jvmArgs("-agentlib:jdwp=transport=dt_socket,address=localhost:18000,server=y,suspend=y")
+}

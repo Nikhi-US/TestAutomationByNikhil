@@ -49,21 +49,7 @@ public class LoginPage extends ReusableLibrary {
             System.out.println("Unable to verify the Logo");
         }
     }
-
-    //        public void fillLoginCredentials() throws Exception {
-//            takeFullScreenshot();
-//
-//            String userName = configUser.getProperty("adminUN");
-//            String password = configUser.getProperty("adminPwd");
-//            scenario.log("login credentials");
-//            sendKeys(userLoginName, userName);
-//            sendKeys(userPassword, password);
-//            takeFullScreenshot();
-//            scenario.log("login credentials after entered username and password");
-//            clickElement(submitButton);
-//            sleep(30000);
-//            takeFullScreenshot();
-//        }
+    
     public void createAccountLuma(String Firstname, String Lastname, String EmailID, String Password) {
         try {
             clickElement(createAccountLink);
